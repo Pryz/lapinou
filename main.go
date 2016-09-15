@@ -160,7 +160,6 @@ func main() {
 
 	// Looping into active domains and pinning CPUs based on CPU Threads
 	for _, domain := range domains {
-		//id, _ := domain.GetID()
 		name, _ := domain.GetName()
 		log.WithFields(log.Fields{
 			"name": name,
