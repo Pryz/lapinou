@@ -1,13 +1,13 @@
 package main
 
 import (
-	"io/ioutil"
-	"regexp"
-	"strings"
-	"strconv"
-	"sort"
-	"os"
 	"flag"
+	"io/ioutil"
+	"os"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/Pryz/libvirt-go"
 	log "github.com/Sirupsen/logrus"
@@ -15,13 +15,14 @@ import (
 
 // CPU struct is used to create the CPU topology
 type CPU struct {
-	Name string
-	Id int
+	Name        string
+	Id          int
 	ThreadsList string
 }
 
 // Sorting CPUs by ID
 type ById []CPU
+
 func (a ById) Len() int           { return len(a) }
 func (a ById) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ById) Less(i, j int) bool { return a[i].Id < a[j].Id }
@@ -40,7 +41,7 @@ func (a ById) Less(i, j int) bool { return a[i].Id < a[j].Id }
 // 	 {cpu8 8 8,32 }
 // 	 {cpu9 9 9,33 } ]
 //
-func get_cpu_topo() (error, []CPU){
+func get_cpu_topo() (error, []CPU) {
 	var cpus []CPU
 	CPU_PATH := "/sys/devices/system/cpu"
 	re, _ := regexp.Compile("^cpu[0-9]+")
@@ -58,7 +59,7 @@ func get_cpu_topo() (error, []CPU){
 
 			//log.Debug("CPU %s has thread(s) : %s", cpu_d.Name(), dat)
 			log.WithFields(log.Fields{
-				"cpu_id": cpu_d.Name(),
+				"cpu_id":  cpu_d.Name(),
 				"threads": dat,
 			}).Debug("CPU threads")
 
@@ -81,14 +82,14 @@ func get_cpu_topo() (error, []CPU){
 
 // Activate the bit `bit` in the byte array `buf`. Bytes are stored in little-endian order.
 func setBit(buf []byte, bit uint64) {
-  idx := bit / 8 // 23 / 8 = 2
-  pos := bit - idx*8
+	idx := bit / 8 // 23 / 8 = 2
+	pos := bit - idx*8
 	log.WithFields(log.Fields{
-		"bit": bit,
-		"byte": idx,
+		"bit":      bit,
+		"byte":     idx,
 		"position": pos,
 	}).Debug("Setting bit in bitmap")
-  buf[idx] = 1 << pos
+	buf[idx] = 1 << pos
 }
 
 // Pinning Guest (virDomain) Virtual CPU on Hypervisor CPU threads
@@ -101,7 +102,7 @@ func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestC
 		threadlist := cpuTopo[i].ThreadsList
 
 		log.WithFields(log.Fields{
-			"vcpu": vproc,
+			"vcpu":    vproc,
 			"threads": threadlist,
 		}).Info("Pinning VCPU on threads")
 
@@ -115,30 +116,29 @@ func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestC
 	}
 }
 
-
 func main() {
 	// Args
 	var debug = flag.Bool("debug", false, "Debug mode")
-  flag.Parse()
+	flag.Parse()
 
 	// Variables
 	var domains []libvirt.VirDomain
 
 	// Setup logging
-  log.SetFormatter(&log.TextFormatter{})
-  log.SetOutput(os.Stdout)
+	log.SetFormatter(&log.TextFormatter{})
+	log.SetOutput(os.Stdout)
 	logLevel := log.InfoLevel
 	if *debug {
 		logLevel = log.DebugLevel
 	}
-  log.SetLevel(logLevel)
+	log.SetLevel(logLevel)
 
 	// Get the CPU topology and sort it by CPU ID
 	err, cpuTopology := get_cpu_topo()
 	if err != nil {
 		log.Fatal(err)
 	}
-  sort.Sort(ById(cpuTopology))
+	sort.Sort(ById(cpuTopology))
 
 	// Connect to Qemu using Libvirt
 	conn, err := libvirt.NewVirConnection("qemu:///system")
