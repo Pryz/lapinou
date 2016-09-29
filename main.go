@@ -23,6 +23,7 @@ type CPU struct {
 
 // Sorting CPUs by ID
 type ById []CPU
+
 func (a ById) Len() int           { return len(a) }
 func (a ById) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ById) Less(i, j int) bool { return a[i].Id < a[j].Id }
@@ -107,7 +108,7 @@ func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestC
 		log.WithFields(log.Fields{
 			"vcpu":    vproc,
 			"threads": threadlist,
-			"cpu": cpuTopo[i].Id,
+			"cpu":     cpuTopo[i].Id,
 		}).Info("Pinning VCPU on threads")
 
 		cpumap = make([]byte, 6)
@@ -189,6 +190,7 @@ func main() {
 	sort.Sort(ById(cpuTopology))
 
 	// Connect to Qemu using Libvirt
+	// TODO: The connection URI should be configurable
 	conn, err := libvirt.NewVirConnection("qemu:///system")
 	if err != nil {
 		log.Fatal(err)
@@ -213,13 +215,15 @@ func main() {
 	}).Info("Domains founds")
 
 	if *cli {
+		// Run the pinning stategy once and exit. Easy to use within a crontab
 		doPinning(domains, countCpus, cpuTopology)
 	} else {
+		// "Daemonized" execution
 		for {
 			if doPinning(domains, countCpus, cpuTopology) {
 				log.Info("CPU Pinning successful. Will check again in 5min.")
 			} else {
-				log.Info("CPU Pinning failed. Will retry again in 30min.")
+				log.Info("CPU Pinning failed. Will retry again in 5min.")
 			}
 			time.Sleep(5 * time.Minute)
 		}
