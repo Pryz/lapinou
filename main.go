@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Pryz/libvirt-go"
 	log "github.com/Sirupsen/logrus"
@@ -93,17 +94,21 @@ func setBit(buf []byte, bit uint64) {
 }
 
 // Pinning Guest (virDomain) Virtual CPU on Hypervisor CPU threads
-func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestCpus uint16, cpuTopo []CPU) {
+func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestCpus uint16, cpuTopo []CPU, pCount uint16) {
 	var vproc uint
 	var cpumap []byte
 
+	idx := countHostCpus - pCount
+
 	vproc = 0
-	for i := countHostCpus - countGuestCpus; i < countHostCpus; i++ {
+	//for i := countHostCpus - countGuestCpus; i < countHostCpus; i++ {
+	for i := idx - countGuestCpus; i < idx; i++ {
 		threadlist := cpuTopo[i].ThreadsList
 
 		log.WithFields(log.Fields{
 			"vcpu":    vproc,
 			"threads": threadlist,
+			"cpu": cpuTopo[i].Id,
 		}).Info("Pinning VCPU on threads")
 
 		cpumap = make([]byte, 6)
@@ -116,16 +121,57 @@ func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestC
 	}
 }
 
+func doPinning(ds []libvirt.VirDomain, hostCpus uint32, cpuTopology []CPU) bool {
+	var totalVcpus uint16
+	var pinnedCount uint16
+	totalVcpus = 0
+	for _, domain := range ds {
+		name, _ := domain.GetName()
+		info, _ := domain.GetInfo()
+		domainVcpus := info.GetNrVirtCpu()
+		totalVcpus += domainVcpus
+		log.WithFields(log.Fields{
+			"name": name,
+			"cpus": domainVcpus,
+		}).Debug("Domain Info")
+	}
+
+	if uint32(totalVcpus) > hostCpus {
+		log.Info("Not enough CPU(s) to apply pinning on all provisioned Domain(s). Skipping")
+		return false
+	}
+	log.Info("Enough CPUs to apply pinning on provisioned VCPUs")
+	// Looping into active domains and pinning CPUs based on CPU Threads
+	pinnedCount = 0
+	for _, domain := range ds {
+		name, _ := domain.GetName()
+		log.WithFields(log.Fields{
+			"name": name,
+		}).Info("Working on domain")
+		info, _ := domain.GetInfo()
+		domainVcpus := info.GetNrVirtCpu()
+		pinGuestToCPUThreads(domain, uint16(hostCpus), uint16(domainVcpus), cpuTopology, pinnedCount)
+		pinnedCount += uint16(domainVcpus)
+	}
+	return true
+}
+
 func main() {
 	// Args
 	var debug = flag.Bool("debug", false, "Debug mode")
+	var cli = flag.Bool("cli", false, "CLI")
+	var jsonlog = flag.Bool("jsonlog", false, "Output logs in JSON instead of text")
 	flag.Parse()
 
 	// Variables
 	var domains []libvirt.VirDomain
 
 	// Setup logging
-	log.SetFormatter(&log.TextFormatter{})
+	if *jsonlog {
+		log.SetFormatter(&log.JSONFormatter{})
+	} else {
+		log.SetFormatter(&log.TextFormatter{})
+	}
 	log.SetOutput(os.Stdout)
 	logLevel := log.InfoLevel
 	if *debug {
@@ -157,15 +203,25 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.WithFields(log.Fields{
+		"cpus": countCpus,
+	}).Debug("Node Info")
+	log.WithFields(log.Fields{
+		"count": len(domains),
+	}).Info("Domains founds")
 
-	// Looping into active domains and pinning CPUs based on CPU Threads
-	for _, domain := range domains {
-		name, _ := domain.GetName()
-		log.WithFields(log.Fields{
-			"name": name,
-		}).Info("Working on domain")
-		info, _ := domain.GetInfo()
-		domainVcpus := info.GetNrVirtCpu()
-		pinGuestToCPUThreads(domain, uint16(countCpus), uint16(domainVcpus), cpuTopology)
+	if *cli {
+		doPinning(domains, countCpus, cpuTopology)
+	} else {
+		for {
+			res := doPinning(domains, countCpus, cpuTopology)
+			if res {
+				log.Info("CPU Pinning successful. Will check again in 5min.")
+				time.Sleep(5 * time.Minute)
+			} else {
+				log.Info("CPU Pinning failed. Will retry again in 30min.")
+				time.Sleep(30 * time.Minute)
+			}
+		}
 	}
 }
