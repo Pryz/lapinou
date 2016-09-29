@@ -1,4 +1,4 @@
-WIP
+# [WIP] Lapinou
 
 ```
    ***
@@ -21,8 +21,23 @@ WIP
        *****
 ```
 
+## What is Lapinou ?
+
+Lapinou is a dumb tool to pin VCPU(s) of instances running with Qemu/KVM. The tool is leveraging [libvirt-go](https://github.com/Pryz/libvirt-go).
+
+Right now Lapinou will try to pin all the VCPUs of all the Domains present on the host and will only pin per CPU Threads. We will maybe add more pinning strategies in the future.
+See : [IBM - Tuning KVM for performance](ibm.com/support/knowledgecenter/linuxonibm/liaat/liaattuning_pdf.pdf).
+
+*DISCLAIMER* : Pinning VCPU(s) can have really bad impact on your performance if you do know what you are doing. Do not use this tool in your prod :)
+
+## Examples
+
+### With only 1 Domain on the host
+
 ```
-$ lapinou
+$ lapinou -cli
+INFO[0000] Domains founds                                count=3
+INFO[0000] Enough CPUs to apply pinning on provisioned VCPUs
 INFO[0000] Working on domain                             name=instance-00000127
 INFO[0000] Pinning VCPU on threads                       threads=16,40 vcpu=0
 INFO[0000] Pinning VCPU on threads                       threads=17,41 vcpu=1
@@ -56,4 +71,41 @@ INFO[0000] Pinning VCPU on threads                       threads=20,44 vcpu=28
 INFO[0000] Pinning VCPU on threads                       threads=21,45 vcpu=29
 INFO[0000] Pinning VCPU on threads                       threads=22,46 vcpu=30
 INFO[0000] Pinning VCPU on threads                       threads=23,47 vcpu=31
+```
+
+### With multiple Domains on the host
+
+```
+$ lapinou -cli
+INFO[0000] Domains founds                                count=3
+INFO[0000] Enough CPUs to apply pinning on provisioned VCPUs
+INFO[0000] Working on domain                             name=instance-00000006
+INFO[0000] Pinning VCPU on threads                       cpu=16 threads=4,16 vcpu=0
+INFO[0000] Pinning VCPU on threads                       cpu=17 threads=5,17 vcpu=1
+INFO[0000] Pinning VCPU on threads                       cpu=18 threads=6,18 vcpu=2
+INFO[0000] Pinning VCPU on threads                       cpu=19 threads=7,19 vcpu=3
+INFO[0000] Pinning VCPU on threads                       cpu=20 threads=8,20 vcpu=4
+INFO[0000] Pinning VCPU on threads                       cpu=21 threads=9,21 vcpu=5
+INFO[0000] Pinning VCPU on threads                       cpu=22 threads=10,22 vcpu=6
+INFO[0000] Pinning VCPU on threads                       cpu=23 threads=11,23 vcpu=7
+INFO[0000] Working on domain                             name=instance-00000004
+INFO[0000] Pinning VCPU on threads                       cpu=8 threads=8,20 vcpu=0
+INFO[0000] Pinning VCPU on threads                       cpu=9 threads=9,21 vcpu=1
+INFO[0000] Pinning VCPU on threads                       cpu=10 threads=10,22 vcpu=2
+INFO[0000] Pinning VCPU on threads                       cpu=11 threads=11,23 vcpu=3
+INFO[0000] Pinning VCPU on threads                       cpu=12 threads=0,12 vcpu=4
+INFO[0000] Pinning VCPU on threads                       cpu=13 threads=1,13 vcpu=5
+INFO[0000] Pinning VCPU on threads                       cpu=14 threads=2,14 vcpu=6
+INFO[0000] Pinning VCPU on threads                       cpu=15 threads=3,15 vcpu=7
+INFO[0000] Working on domain                             name=instance-00000003
+INFO[0000] Pinning VCPU on threads                       cpu=4 threads=4,16 vcpu=0
+INFO[0000] Pinning VCPU on threads                       cpu=5 threads=5,17 vcpu=1
+INFO[0000] Pinning VCPU on threads                       cpu=6 threads=6,18 vcpu=2
+INFO[0000] Pinning VCPU on threads                       cpu=7 threads=7,19 vcpu=3
+```
+
+## Build and deploy Lapinou
+
+```
+
 ```
