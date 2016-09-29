@@ -23,7 +23,6 @@ type CPU struct {
 
 // Sorting CPUs by ID
 type ById []CPU
-
 func (a ById) Len() int           { return len(a) }
 func (a ById) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ById) Less(i, j int) bool { return a[i].Id < a[j].Id }
@@ -121,9 +120,12 @@ func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestC
 	}
 }
 
+// Apply the pinning strategy against all domains passed in parameter
 func doPinning(ds []libvirt.VirDomain, hostCpus uint32, cpuTopology []CPU) bool {
 	var totalVcpus uint16
 	var pinnedCount uint16
+
+	// Count number of provisioned VCPU(s)
 	totalVcpus = 0
 	for _, domain := range ds {
 		name, _ := domain.GetName()
@@ -135,12 +137,12 @@ func doPinning(ds []libvirt.VirDomain, hostCpus uint32, cpuTopology []CPU) bool 
 			"cpus": domainVcpus,
 		}).Debug("Domain Info")
 	}
-
 	if uint32(totalVcpus) > hostCpus {
 		log.Info("Not enough CPU(s) to apply pinning on all provisioned Domain(s). Skipping")
 		return false
 	}
 	log.Info("Enough CPUs to apply pinning on provisioned VCPUs")
+
 	// Looping into active domains and pinning CPUs based on CPU Threads
 	pinnedCount = 0
 	for _, domain := range ds {
@@ -150,6 +152,8 @@ func doPinning(ds []libvirt.VirDomain, hostCpus uint32, cpuTopology []CPU) bool 
 		}).Info("Working on domain")
 		info, _ := domain.GetInfo()
 		domainVcpus := info.GetNrVirtCpu()
+		// TODO: We should be able to define and use different strategy here
+		// TODO: Should we use a go routine here ?
 		pinGuestToCPUThreads(domain, uint16(hostCpus), uint16(domainVcpus), cpuTopology, pinnedCount)
 		pinnedCount += uint16(domainVcpus)
 	}
@@ -159,7 +163,7 @@ func doPinning(ds []libvirt.VirDomain, hostCpus uint32, cpuTopology []CPU) bool 
 func main() {
 	// Args
 	var debug = flag.Bool("debug", false, "Debug mode")
-	var cli = flag.Bool("cli", false, "CLI")
+	var cli = flag.Bool("cli", false, "CLI Mode. Otherwise Lapinou will be 'daemonized'")
 	var jsonlog = flag.Bool("jsonlog", false, "Output logs in JSON instead of text")
 	flag.Parse()
 
@@ -169,8 +173,6 @@ func main() {
 	// Setup logging
 	if *jsonlog {
 		log.SetFormatter(&log.JSONFormatter{})
-	} else {
-		log.SetFormatter(&log.TextFormatter{})
 	}
 	log.SetOutput(os.Stdout)
 	logLevel := log.InfoLevel
@@ -214,14 +216,12 @@ func main() {
 		doPinning(domains, countCpus, cpuTopology)
 	} else {
 		for {
-			res := doPinning(domains, countCpus, cpuTopology)
-			if res {
+			if doPinning(domains, countCpus, cpuTopology) {
 				log.Info("CPU Pinning successful. Will check again in 5min.")
-				time.Sleep(5 * time.Minute)
 			} else {
 				log.Info("CPU Pinning failed. Will retry again in 30min.")
-				time.Sleep(30 * time.Minute)
 			}
+			time.Sleep(5 * time.Minute)
 		}
 	}
 }
