@@ -104,6 +104,20 @@ INFO[0000] Pinning VCPU on threads                       cpu=6 threads=6,18 vcpu
 INFO[0000] Pinning VCPU on threads                       cpu=7 threads=7,19 vcpu=3
 ```
 
+## Run it
+
+Use it manually or inside a crontab. The work to daemonize the thing is in progress.
+
+```
+*/30 * * * * /usr/local/bin/lapinou -cli > /tmp/lapinou.log
+```
+If you want JSON logs
+
+```
+*/30 * * * * /usr/local/bin/lapinou -cli -jsonlog > /tmp/lapinou.log
+```
+
+
 ## Build and deploy Lapinou
 
 To build Lapinou you will need a box/container with libvirt-dev installed, go and make. Then to build the binary :
