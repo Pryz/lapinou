@@ -106,6 +106,14 @@ INFO[0000] Pinning VCPU on threads                       cpu=7 threads=7,19 vcpu
 
 ## Build and deploy Lapinou
 
+To build Lapinou you will need a box/container with libvirt-dev installed, go and make. Then to build the binary :
+
+```
+make
 ```
 
+To build the package (You will need FPM for that) :
+
+```
+make deb
 ```
