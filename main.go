@@ -96,7 +96,6 @@ func setBit(buf []byte, bit uint64) {
 // Pinning Guest (virDomain) Virtual CPU on Hypervisor CPU threads
 func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint32, countGuestCpus uint32, cpuTopo []CPU, pCount uint32) {
 	var vproc uint
-	//var cpuMap []byte
 	var cpuMap []uint32
 
 	idx := countHostCpus - pCount
@@ -111,14 +110,11 @@ func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint32, countGuestC
 			"cpu":     cpuTopo[i].Id,
 		}).Info("Pinning VCPU on threads")
 
-		//cpuMap = make([]byte, 6)
 		cpuMap = make([]uint32, 2)
 		for i, sbit := range strings.Split(threadList, ",") {
 			bit, _ := strconv.ParseUint(sbit, 10, 32)
-			//setBit(cpuMap, bit)
 			cpuMap[i] = uint32(bit)
 		}
-		//d.PinVcpu(vproc, cpuMap, 6)
 		d.PinVcpu(vproc, cpuMap, countHostCpus)
 		vproc++
 	}
@@ -132,14 +128,9 @@ func doPinning(ds []libvirt.VirDomain, hostCpus uint32, cpuTopology []CPU) bool 
 	// Count number of provisioned VCPU(s)
 	totalVcpus = 0
 	for _, domain := range ds {
-		name, _ := domain.GetName()
 		info, _ := domain.GetInfo()
 		domainVcpus := info.GetNrVirtCpu()
 		totalVcpus += domainVcpus
-		log.WithFields(log.Fields{
-			"name": name,
-			"cpus": domainVcpus,
-		}).Debug("Domain Info")
 	}
 	if uint32(totalVcpus) > hostCpus {
 		log.Info("Not enough CPU(s) to apply pinning on all provisioned Domain(s). Skipping")
