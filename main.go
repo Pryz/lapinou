@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Pryz/libvirt-go"
+	"github.com/rgbkrk/libvirt-go"
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -94,29 +94,32 @@ func setBit(buf []byte, bit uint64) {
 }
 
 // Pinning Guest (virDomain) Virtual CPU on Hypervisor CPU threads
-func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestCpus uint16, cpuTopo []CPU, pCount uint16) {
+func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint32, countGuestCpus uint32, cpuTopo []CPU, pCount uint32) {
 	var vproc uint
-	var cpumap []byte
+	//var cpuMap []byte
+	var cpuMap []uint32
 
 	idx := countHostCpus - pCount
 
 	vproc = 0
-	//for i := countHostCpus - countGuestCpus; i < countHostCpus; i++ {
 	for i := idx - countGuestCpus; i < idx; i++ {
-		threadlist := cpuTopo[i].ThreadsList
+		threadList := cpuTopo[i].ThreadsList
 
 		log.WithFields(log.Fields{
 			"vcpu":    vproc,
-			"threads": threadlist,
+			"threads": threadList,
 			"cpu":     cpuTopo[i].Id,
 		}).Info("Pinning VCPU on threads")
 
-		cpumap = make([]byte, 6)
-		for _, sbit := range strings.Split(threadlist, ",") {
-			bit, _ := strconv.ParseUint(sbit, 10, 64)
-			setBit(cpumap, bit)
+		//cpuMap = make([]byte, 6)
+		cpuMap = make([]uint32, 2)
+		for i, sbit := range strings.Split(threadList, ",") {
+			bit, _ := strconv.ParseUint(sbit, 10, 32)
+			//setBit(cpuMap, bit)
+			cpuMap[i] = uint32(bit)
 		}
-		d.PinVcpu(vproc, cpumap, 6)
+		//d.PinVcpu(vproc, cpuMap, 6)
+		d.PinVcpu(vproc, cpuMap, countHostCpus)
 		vproc++
 	}
 }
@@ -124,7 +127,7 @@ func pinGuestToCPUThreads(d libvirt.VirDomain, countHostCpus uint16, countGuestC
 // Apply the pinning strategy against all domains passed in parameter
 func doPinning(ds []libvirt.VirDomain, hostCpus uint32, cpuTopology []CPU) bool {
 	var totalVcpus uint16
-	var pinnedCount uint16
+	var pinnedCount uint32
 
 	// Count number of provisioned VCPU(s)
 	totalVcpus = 0
@@ -155,8 +158,8 @@ func doPinning(ds []libvirt.VirDomain, hostCpus uint32, cpuTopology []CPU) bool 
 		domainVcpus := info.GetNrVirtCpu()
 		// TODO: We should be able to define and use different strategy here
 		// TODO: Should we use a go routine here ?
-		pinGuestToCPUThreads(domain, uint16(hostCpus), uint16(domainVcpus), cpuTopology, pinnedCount)
-		pinnedCount += uint16(domainVcpus)
+		pinGuestToCPUThreads(domain, hostCpus, uint32(domainVcpus), cpuTopology, pinnedCount)
+		pinnedCount += uint32(domainVcpus)
 	}
 	return true
 }
