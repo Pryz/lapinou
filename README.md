@@ -28,7 +28,7 @@ Lapinou is a dumb tool to pin VCPU(s) of instances running with Qemu/KVM. The to
 Right now Lapinou will try to pin all the VCPUs of all the Domains present on the host and will only pin per CPU Threads. We will maybe add more pinning strategies in the future.
 See : [IBM - Tuning KVM for performance](ibm.com/support/knowledgecenter/linuxonibm/liaat/liaattuning_pdf.pdf).
 
-*DISCLAIMER* : Pinning VCPU(s) can have really bad impact on your performance if you do know what you are doing. Do not use this tool in your prod :)
+*DISCLAIMER* : Pinning VCPU(s) can have really bad impact on your performance if you don't know what you are doing. Do not use this tool in your prod :)
 
 ## Examples
 
